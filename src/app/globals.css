@@ -15,12 +15,38 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #dbd0e1;
   }
+}
+
+main{
+  padding: 20px;
+  background-color: #e5e5f7;
+  background-image: radial-gradient(#ffffff 1px, hsl(177, 100%, 96%) 1px);
+  background-size: 20px 20px;
+}
+
+tbody{
+  padding: auto;
+  text-align: left;
+}
+
+button{
+  border-radius: 8px;
+  background-color: #056049;
+  padding: 8px;
+  color: aliceblue;
+}
+
+thead{
+  padding: auto;
+  text-align: left;
+  background-color: rgb(178, 215, 212);
+  color: white;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
