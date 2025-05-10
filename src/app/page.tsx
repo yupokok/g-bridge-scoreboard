@@ -41,13 +41,6 @@ export default function Home() {
     setPlayers([...players, ...newPlayers])
   }
 
-  const resetScores = () => {
-    if (confirm('Are you sure you want to reset all scores?')) {
-      const reset = players.map(p => ({ ...p, score: 0 }))
-      setPlayers(reset)
-      setHistory([])
-    }
-  }
 
   const undo = () => {
     const last = history.pop()
