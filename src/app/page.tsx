@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+
 type Player = {
   name: string
   score: number
@@ -18,6 +19,7 @@ export default function Home() {
     { name: 'Player 2', score: 0 },
   ])
   const [history, setHistory] = useState<Action[]>([])
+  const maxScore = Math.max(...players.map(p => p.score), 0)
 
   const handleScoreChange = (index: number, delta: number) => {
     const updated = [...players]
@@ -79,7 +81,12 @@ export default function Home() {
         </thead>
         <tbody>
           {players.map((player, index) => (
-            <tr key={index} className="border-t border-gray-300">
+            <tr
+            key={index}
+            className={`border-t border-gray-300 ${
+              player.score === maxScore && maxScore > 0 ? 'bg-yellow-100' : ''
+            }`}
+          >
               <td className="p-3">{player.name}</td>
               <td className="p-3">{player.score}</td>
               <td className="p-3">
