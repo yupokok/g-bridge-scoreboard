@@ -16,6 +16,8 @@ export default function GamePage() {
   const [round, setRound] = useState(1);
   const [overtakeIndexes, setOvertakeIndexes] = useState<number[]>([]);
   const prevRanksRef = useRef<number[]>([]);
+  const [gameId, setGameId] = useState<string | null>(null);
+
 
   // Add players from comma separated input
   const addPlayers = () => {
@@ -36,6 +38,27 @@ export default function GamePage() {
     }
   };
 
+  const [joinGameId, setJoinGameId] = useState('');
+
+  const joinGame = async () => {
+    if (!joinGameId) return;
+    try {
+      const res = await fetch(`http://localhost:3001/game/${joinGameId}`);
+      if (!res.ok) {
+        alert('Game not found!');
+        return;
+      }
+      const game = await res.json();
+      setPlayers(game.players);
+      setRound(game.round);
+      setShowAddPlayers(false);
+      setGameId(joinGameId);
+    } catch (err) {
+      console.error('Failed to load game:', err);
+      alert('Error loading game');
+    }
+  };
+
   // Undo last change
   const undo = () => {
     if (undoStack.length === 0) return;
@@ -44,12 +67,12 @@ export default function GamePage() {
     setUndoStack((stack) => stack.slice(0, stack.length - 1));
   };
 
- // Reset scores to zero and reset round to 1
-const reset = () => {
-  setUndoStack((stack) => [...stack, players]);
-  setPlayers(players.map((p) => ({ ...p, score: 0 })));
-  setRound(1);  // Reset round here
-};
+  // Reset scores to zero and reset round to 1
+  const reset = () => {
+    setUndoStack((stack) => [...stack, players]);
+    setPlayers(players.map((p) => ({ ...p, score: 0 })));
+    setRound(1);  // Reset round here
+  };
 
 
   // New Game - clear everything, back to add players
@@ -71,6 +94,35 @@ const reset = () => {
       alert('Please enter a valid number.');
       return;
     }
+
+    const createGame = async (players: Player[]) => {
+      const res = await fetch('http://localhost:3001/new-game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players }),
+      });
+      const data = await res.json();
+      setGameId(data.gameId); // store this in state
+    };
+
+    const loadGame = async (gameId: string) => {
+      const res = await fetch(`http://localhost:3001/game/${gameId}`);
+      if (!res.ok) return alert('Game not found!');
+      const game = await res.json();
+      setPlayers(game.players);
+      setRound(game.round);
+    };
+
+    const updateGame = async () => {
+      if (!gameId) return;
+      await fetch(`http://localhost:3001/game/${gameId}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players, round }),
+      });
+    };
+
+
 
     const scoreToAdd = 10 + Math.pow(n, 2);
 
@@ -173,8 +225,30 @@ const reset = () => {
       <h1 className="text-3xl font-bold">Wee FamBam's Spectacular Addiction</h1>
       <h2 className="text-xl mb-6">German Bridge Scoreboard</h2>
 
+      <section className="mb-6">
+        {/* <h2 className="mb-2">Join existing game by ID:</h2>
+        <input
+          type="text"
+          className="border px-3 py-2 rounded w-full max-w-md"
+          value={joinGameId}
+          onChange={(e) => setJoinGameId(e.target.value)}
+          placeholder="Enter Game ID"
+          onKeyDown={(e) => e.key === 'Enter' && joinGame()}
+        /> */}
+        {/* <br />
+        <button
+          className="mt-2 bg-blue-600 text-white px-4 py-2 rounded"
+          onClick={joinGame}
+        >
+          Join Game
+        </button> */}
+      </section>
+
+
       {showAddPlayers && (
         <section className="mb-6">
+          
+
           <h2 className="mb-2">Add players (comma separated):</h2>
           <input
             type="text"
@@ -197,6 +271,12 @@ const reset = () => {
       {!showAddPlayers && (
         <>
           <div className="mb-4 space-x-2">
+
+          {/* {gameId && (
+            <div className="mb-4 text-sm text-gray-700">
+              <strong>Game ID:</strong> {gameId}
+            </div>
+          )} */}
             <button
               className="bg-red-600 text-white px-4 py-2 rounded"
               onClick={newGame}
@@ -248,9 +328,8 @@ const reset = () => {
                   return (
                     <tr
                       key={player.originalIndex}
-                      className={`${isLeader ? 'bg-yellow-200 font-bold' : ''} ${
-                        isOvertaking ? 'overtake' : ''
-                      }`}
+                      className={`${isLeader ? 'bg-yellow-200 font-bold' : ''} ${isOvertaking ? 'overtake' : ''
+                        }`}
                     >
                       <td className="border border-gray-400 px-1 py-1">{player.name}</td>
                       <td className="border border-gray-400 px-1 py-1">{player.score}</td>
