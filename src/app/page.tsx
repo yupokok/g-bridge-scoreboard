@@ -5,12 +5,27 @@ import { useRouter } from 'next/navigation'
 export default function LandingPage() {
   const router = useRouter()
 
+  const handleNewGame = () => {
+    const input = prompt('Enter player names, separated by commas:')
+    if (!input) return
+
+    const names = input
+      .split(',')
+      .map(name => name.trim())
+      .filter(name => name.length > 0)
+
+    if (names.length === 0) return
+
+    const query = new URLSearchParams({ players: names.join(',') }).toString()
+    router.push(`/game?${query}`)
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-8">
       <h1 className="text-4xl font-bold mb-8">German Bridge Calculator</h1>
       <div className="flex gap-6">
         <button
-          onClick={() => router.push('/game')}
+          onClick={handleNewGame}
           className="bg-indigo-600 text-white px-6 py-3 rounded shadow text-lg"
         >
           New Game
