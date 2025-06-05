@@ -1,219 +1,218 @@
-'use client'
+'use client';
 
-import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import React, { useState } from 'react';
 
 type Player = {
-  name: string
-  score: number
-}
-
-type Action = {
-  playerIndex: number
-  delta: number
-}
+  name: string;
+  score: number;
+};
 
 export default function GamePage() {
-  const searchParams = useSearchParams()
-  const [players, setPlayers] = useState<Player[]>([])
-  const [history, setHistory] = useState<Action[]>([])
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [undoStack, setUndoStack] = useState<Player[][]>([]);
+  const [showAddPlayers, setShowAddPlayers] = useState(true);
+  const [inputNames, setInputNames] = useState('');
 
-  useEffect(() => {
-    const playerString = searchParams.get('players')
-    if (playerString) {
-      const names = playerString
-        .split(',')
-        .map(name => name.trim())
-        .filter(name => name.length > 0)
-
-      const initialPlayers = names.map(name => ({ name, score: 0 }))
-      setPlayers(initialPlayers)
-    }
-  }, [searchParams])
-
-  const scorePlayer = (index: number) => {
-    const bidStr = prompt(`Enter bid by ${players[index].name}:`)
-    const actualStr = prompt(`Enter sets won by ${players[index].name}:`)
-    if (!bidStr || !actualStr) return
-
-    const bid = parseInt(bidStr)
-    const actual = parseInt(actualStr)
-
-    if (isNaN(bid) || isNaN(actual)) {
-      alert('Please enter valid numbers')
-      return
-    }
-
-    let delta: number
-    if (bid === actual) {
-      delta = 10 + Math.pow(bid, 2)
-    } else {
-      delta = -Math.pow(bid - actual, 2)
-    }
-
-    handleScoreChange(index, delta)
-  }
-
-
-  const handleScoreChange = (index: number, delta: number) => {
-    const updated = [...players]
-    updated[index].score += delta
-    setPlayers(updated)
-    setHistory([...history, { playerIndex: index, delta }])
-  }
-
-  const resetScores = () => {
-    if (confirm('Reset all scores?')) {
-      const reset = players.map(p => ({ ...p, score: 0 }))
-      setPlayers(reset)
-      setHistory([])
-    }
-  }
-
-  const undo = () => {
-    const last = history.pop()
-    if (!last) return
-    const updated = [...players]
-    updated[last.playerIndex].score -= last.delta
-    setPlayers(updated)
-    setHistory([...history])
-  }
-
-  const addPlayer = () => {
-    const input = prompt('Enter player names, separated by commas:')
-    if (!input) return
-
-    const names = input
+  // Add players from comma separated input
+  const addPlayers = () => {
+    const newPlayers = inputNames
       .split(',')
-      .map(name => name.trim())
-      .filter(name => name.length > 0)
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0)
+      .map((name) => ({ name, score: 0 }));
 
-    const newPlayers = names.map(name => ({ name, score: 0 }))
-    setPlayers([...players, ...newPlayers])
-  }
-
-  const newGame = () => {
-    if (confirm('Start a new game? This will remove all players.')) {
-      setPlayers([])
-      setHistory([])
+    if (newPlayers.length > 0) {
+      setPlayers(newPlayers);
+      setUndoStack([]);
+      setShowAddPlayers(false);
+      setInputNames('');
     }
-  }
+  };
 
-  const maxScore = Math.max(...players.map(p => p.score), 0)
+  // Undo last change
+  const undo = () => {
+    if (undoStack.length === 0) return;
+    const last = undoStack[undoStack.length - 1];
+    setPlayers(last);
+    setUndoStack((stack) => stack.slice(0, stack.length - 1));
+  };
 
-  if (players.length === 0) {
-    return (
-      <main className="min-h-screen flex items-center justify-center text-center">
-        <p className="text-xl text-gray-500">No players yet. Return to home to start a new game.</p>
-      </main>
-    )
-  }
+  // Reset scores to zero
+  const reset = () => {
+    setUndoStack((stack) => [...stack, players]);
+    setPlayers(players.map((p) => ({ ...p, score: 0 })));
+  };
+
+  // New Game - clear everything, back to add players
+  const newGame = () => {
+    setPlayers([]);
+    setUndoStack([]);
+    setShowAddPlayers(true);
+  };
+
+  // Score round based on German Bridge rules
+  const scorePlayer = (index: number) => {
+    const bidStr = prompt(`${players[index].name} - Enter bid (number of sets)`);
+    const wonStr = prompt(`${players[index].name} - Enter sets won`);
+
+    if (!bidStr || !wonStr) return;
+
+    const bid = parseInt(bidStr, 10);
+    const won = parseInt(wonStr, 10);
+
+    if (isNaN(bid) || isNaN(won)) {
+      alert('Invalid numbers entered.');
+      return;
+    }
+
+    const prevPlayers = JSON.parse(JSON.stringify(players)); // deep copy for undo
+
+    let scoreChange = 0;
+    if (bid === won) {
+      scoreChange = 10 + Math.pow(won, 2);
+    } else {
+      scoreChange = -Math.pow(Math.abs(bid - won), 2);
+    }
+
+    const newPlayers = [...players];
+    newPlayers[index] = {
+      ...newPlayers[index],
+      score: newPlayers[index].score + scoreChange,
+    };
+
+    setUndoStack((stack) => [...stack, prevPlayers]);
+    setPlayers(newPlayers);
+  };
+
+  // Quick add/subtract score helper
+  const quickAdjustScore = (index: number, amount: number) => {
+    const prevPlayers = JSON.parse(JSON.stringify(players));
+    const newPlayers = [...players];
+    newPlayers[index] = {
+      ...newPlayers[index],
+      score: newPlayers[index].score + amount,
+    };
+    setUndoStack((stack) => [...stack, prevPlayers]);
+    setPlayers(newPlayers);
+  };
+
+  // Highlight leader row
+  const maxScore = players.length ? Math.max(...players.map((p) => p.score)) : 0;
+
+  // Sort players descending by score
+  const sortedPlayers = players
+    .map((p, i) => ({ ...p, originalIndex: i }))
+    .sort((a, b) => b.score - a.score);
 
   return (
-    <main className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-3xl font-bold mb-6">German Bridge Game</h1>
+    <main>
+      <h1 className="text-2xl font-bold">Wee FamBam's Spectacular Addiction</h1>
+      <h2  className="text-xl mb-6"> German Bridge Scoreboard </h2>
+      <br />
 
-      <table className="min-w-full border border-gray-300 bg-white shadow rounded-lg overflow-hidden">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="p-3 text-left">#</th>
-            <th className="p-3 text-left">Player</th>
-            <th className="p-3 text-left">Score</th>
-            <th className="p-3 text-left">Input Bids</th>
-            <th className="p-3 text-left">+10</th>
-            <th className="p-3 text-left">+1</th>
-            <th className="p-3 text-left">-1</th>
-            <th className="p-3 text-left">Custom</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...players]
-            .sort((a, b) => b.score - a.score)
-            .map((player, index) => (
-              <tr
-                key={index}
-                className={`border-t border-gray-300 ${player.score === maxScore && maxScore > 0 ? 'bg-yellow-100' : ''
-                  }`}
-              >
-                <td className="p-3">{index + 1}</td>
-                <td className="p-3">{player.name}</td>
-                <td className="p-3">{player.score}</td>
-                <td className="p-3">
-                  <button
-                    className="bg-blue-600 text-white px-3 py-1 rounded"
-                    onClick={() => scorePlayer(index)}
-                  >
-                    Input Bids
-                  </button>
-                </td>
+      {showAddPlayers && (
+        <section className="mb-6">
+          <h2 className="mb-2">Add players (comma separated):</h2>
+          <input
+            type="text"
+            className="border px-3 py-2 rounded"
+            value={inputNames}
+            onChange={(e) => setInputNames(e.target.value)}
+            placeholder="Player1, Player2, Player3"
+            onKeyDown={(e) => e.key === 'Enter' && addPlayers()}
+          />
+          <br />
+          <button
+            className="mt-2 bg-green-600 text-white px-4 py-2 rounded"
+            onClick={addPlayers}
+          >
+            Start Game
+          </button>
+        </section>
+      )}
 
-                <td className="p-3">
-                  <button
-                    className="bg-green-500 text-white px-3 py-1 rounded"
-                    onClick={() => handleScoreChange(index, 10)}
-                  >
-                    +10
-                  </button>
-                </td>
-                <td className="p-3">
-                  <button
-                    className="bg-red-500 text-white px-3 py-1 rounded"
-                    onClick={() => handleScoreChange(index, 1)}
-                  >
-                    +1
-                  </button>
-                </td>
-                <td className="p-3">
-                  <button
-                    className="bg-blue-500 text-white px-3 py-1 rounded"
-                    onClick={() => handleScoreChange(index, -1)}
-                  >
-                    -1
-                  </button>
-                </td>
-                <td className="p-3">
-                  <button
-                    className="bg-gray-600 text-white px-3 py-1 rounded"
-                    onClick={() => {
-                      const val = prompt('Enter custom value:')
-                      const delta = parseInt(val || '')
-                      if (!isNaN(delta)) handleScoreChange(index, delta)
-                    }}
-                  >
-                    Custom
-                  </button>
-                </td>
+      {!showAddPlayers && (
+        <>
+          <div className="mb-4 space-x-2">
+            <button
+              className="bg-red-600 text-white px-4 py-2 rounded"
+              onClick={newGame}
+            >
+              New Game
+            </button>
+            <button
+              className="bg-yellow-600 text-white px-4 py-2 rounded"
+              onClick={undo}
+              disabled={undoStack.length === 0}
+              title={undoStack.length === 0 ? 'Nothing to undo' : ''}
+            >
+              Undo
+            </button>
+            <button
+              className="bg-gray-600 text-white px-4 py-2 rounded"
+              onClick={reset}
+            >
+              Reset Scores
+            </button>
+          </div>
+
+          <table className="w-full border-collapse border">
+            <thead>
+              <tr>
+                <th className="border border-gray-400 px-3 py-1 w-5">Rank</th>
+                <th className="border border-gray-400 px-3 py-1 w-40">Player</th>
+                <th className="border border-gray-400 px-3 py-1 w-20">Score</th>
+                <th className="border border-gray-400 px-3 py-1 w-40">Calculate</th>
+                <th className="border border-gray-400 px-3 py-1 w-40">Quick Add/Subtract</th>
+
               </tr>
-            ))}
-        </tbody>
-      </table>
-
-      <div className="mt-6 flex gap-4 flex-wrap">
-        <button
-          onClick={addPlayer}
-          className="bg-indigo-600 text-white px-4 py-2 rounded shadow"
-        >
-          Add Player
-        </button>
-        <button
-          onClick={undo}
-          className="bg-yellow-500 text-white px-4 py-2 rounded shadow"
-        >
-          Undo
-        </button>
-        <button
-          onClick={resetScores}
-          className="bg-red-600 text-white px-4 py-2 rounded shadow"
-        >
-          Reset
-        </button>
-        <button
-          onClick={newGame}
-          className="bg-black text-white px-4 py-2 rounded shadow"
-        >
-          New Game
-        </button>
-      </div>
+            </thead>
+            <tbody>
+              {sortedPlayers.map((player, rank) => (
+                <tr
+                  key={player.originalIndex}
+                  className={
+                    player.score === maxScore && maxScore !== 0
+                      ? 'bg-yellow-200 font-bold'
+                      : ''
+                  }
+                >
+                  <td className="border border-gray-400 px-1 py-1">{rank + 1}</td>
+                  <td className="border border-gray-400 px-1 py-1">{player.name}</td>
+                  <td className="border border-gray-400 px-1 py-1">{player.score}</td>
+                  <td className="border border-gray-400 px-1 py-1">
+                    <button
+                      className="bg-purple-600 text-white px-3 py-1 rounded"
+                      onClick={() => scorePlayer(player.originalIndex)}
+                    >
+                      Calculate Score
+                    </button>
+                  </td>
+                  <td className="border border-gray-400 px-3 py-1 space-x-1">
+                    <button
+                      className="bg-green-600 text-white px-2 py-1 rounded"
+                      onClick={() => quickAdjustScore(player.originalIndex, 10)}
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={() => quickAdjustScore(player.originalIndex, 1)}
+                    >
+                      +1
+                    </button>
+                    <button
+                      className="bg-red-600 text-white px-2 py-1 rounded"
+                      onClick={() => quickAdjustScore(player.originalIndex, -1)}
+                    >
+                      -1
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </main>
-  )
+  );
 }
