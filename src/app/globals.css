@@ -36,6 +36,7 @@ main {
 /* Remove invalid padding from tbody */
 tbody {
   text-align: left;
+  background-color: white;
 }
 
 /* Style buttons for bigger tap targets and wrap nicely */
@@ -92,5 +93,24 @@ td {
   /* Make table font a little smaller on narrow screens */
   table {
     font-size: 0.875rem;
+    border-radius: 5%;
   }
 }
+
+@keyframes highlightOvertake {
+  0% {
+    background-color: #fffae6;
+  }
+  50% {
+    background-color: #fff59d;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.overtake {
+  animation: highlightOvertake 2s ease forwards;
+}
+
+

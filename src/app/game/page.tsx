@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 type Player = {
   name: string;
   score: number;
 };
+
+
 
 export default function GamePage() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -28,6 +30,32 @@ export default function GamePage() {
       setInputNames('');
     }
   };
+
+  const [overtakeIndexes, setOvertakeIndexes] = useState<number[]>([]);
+const prevRanksRef = useRef<number[]>([]);
+useEffect(() => {
+  if (prevRanksRef.current.length === 0) {
+    prevRanksRef.current = sortedPlayers.map(p => p.originalIndex);
+    return;
+  }
+
+  const prevRanks = prevRanksRef.current;
+  const newRanks = sortedPlayers.map(p => p.originalIndex);
+
+  const overtakes = newRanks.reduce<number[]>((acc, playerIndex, newPos) => {
+    const prevPos = prevRanks.indexOf(playerIndex);
+    if (prevPos > newPos) acc.push(playerIndex);
+    return acc;
+  }, []);
+
+  if (overtakes.length > 0) {
+    setOvertakeIndexes(overtakes);
+    setTimeout(() => setOvertakeIndexes([]), 2000);
+  }
+
+  prevRanksRef.current = newRanks;
+}, [players]);
+
 
   // Undo last change
   const undo = () => {
@@ -159,59 +187,57 @@ export default function GamePage() {
             <table className="w-full border-collapse border">
               <thead>
                 <tr>
-                  <th className="border border-gray-400 px-3 py-1 w-5">Rank</th>
-                  <th className="border border-gray-400 px-3 py-1 w-40">Player</th>
+                  <th className="border border-gray-400 px-3 py-1 w-20">Player</th>
                   <th className="border border-gray-400 px-3 py-1 w-10">Score</th>
-                  <th className="border border-gray-400 px-3 py-1 w-40">Calculate</th>
+                  <th className="border border-gray-400 w-10">Calculate</th>
                   <th className="border border-gray-400 px-3 py-1 w-40">Quick Add/Subtract</th>
 
                 </tr>
               </thead>
               <tbody>
-                {sortedPlayers.map((player, rank) => (
-                  <tr
-                    key={player.originalIndex}
-                    className={
-                      player.score === maxScore && maxScore !== 0
-                        ? 'bg-yellow-200 font-bold'
-                        : ''
-                    }
-                  >
-                    <td className="border border-gray-400 px-1 py-1">{rank + 1}</td>
-                    <td className="border border-gray-400 px-1 py-1">{player.name}</td>
-                    <td className="border border-gray-400 px-1 py-1">{player.score}</td>
-                    <td className="border border-gray-400 px-1 py-1">
-                      <button
-                        className="bg-purple-600 text-white px-3 py-1 rounded"
-                        onClick={() => scorePlayer(player.originalIndex)}
-                      >
-                        Calculate Score
-                      </button>
-                    </td>
-                    <td className="border border-gray-400 px-3 py-1 space-x-1">
-                      <div className="button-group">
-                        <button
-                          className="bg-green-600 text-white px-2 py-1 rounded"
-                          onClick={() => quickAdjustScore(player.originalIndex, 10)}
-                        >
-                          +10
-                        </button>
-                        <button
-                          onClick={() => quickAdjustScore(player.originalIndex, 1)}
-                        >
-                          +1
-                        </button>
-                        <button
-                          className="bg-red-600 text-white px-2 py-1 rounded"
-                          onClick={() => quickAdjustScore(player.originalIndex, -1)}
-                        >
-                          -1
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+  {sortedPlayers.map((player, rank) => {
+    const isOvertaking = overtakeIndexes.includes(player.originalIndex);
+    const isLeader = player.score === maxScore && maxScore !== 0;
+
+    return (
+      <tr
+        key={player.originalIndex}
+        className={`${isLeader ? 'bg-yellow-200 font-bold' : ''} ${
+          isOvertaking ? 'overtake' : ''
+        }`}
+      >
+        <td className="border border-gray-400 px-1 py-1">{player.name}</td>
+        <td className="border border-gray-400 px-1 py-1">{player.score}</td>
+        <td className="border border-gray-400 px-1 py-1">
+          <button
+            className="bg-purple-600 text-white px-3 py-1 rounded"
+            onClick={() => scorePlayer(player.originalIndex)}
+          >
+            Calculate
+          </button>
+        </td>
+        <td className="border border-gray-400 px-3 py-1 space-x-1">
+          <div className="button-group">
+            <button
+              className="bg-green-600 text-white px-2 py-1 rounded"
+              onClick={() => quickAdjustScore(player.originalIndex, 10)}
+            >
+              +10
+            </button>
+            <button onClick={() => quickAdjustScore(player.originalIndex, 1)}>+1</button>
+            <button
+              className="bg-red-600 text-white px-2 py-1 rounded"
+              onClick={() => quickAdjustScore(player.originalIndex, -1)}
+            >
+              -1
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
+
             </table>
           </div>
         </>
