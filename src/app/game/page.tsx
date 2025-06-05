@@ -5,15 +5,17 @@ import React, { useState, useEffect, useRef } from 'react';
 type Player = {
   name: string;
   score: number;
+  originalIndex: number;
 };
-
-
 
 export default function GamePage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [undoStack, setUndoStack] = useState<Player[][]>([]);
   const [showAddPlayers, setShowAddPlayers] = useState(true);
   const [inputNames, setInputNames] = useState('');
+  const [round, setRound] = useState(1);
+  const [overtakeIndexes, setOvertakeIndexes] = useState<number[]>([]);
+  const prevRanksRef = useRef<number[]>([]);
 
   // Add players from comma separated input
   const addPlayers = () => {
@@ -21,41 +23,18 @@ export default function GamePage() {
       .split(',')
       .map((n) => n.trim())
       .filter((n) => n.length > 0)
-      .map((name) => ({ name, score: 0 }));
+      .map((name, i) => ({ name, score: 0, originalIndex: i }));
 
     if (newPlayers.length > 0) {
       setPlayers(newPlayers);
       setUndoStack([]);
       setShowAddPlayers(false);
       setInputNames('');
+      setRound(1);
+      prevRanksRef.current = newPlayers.map((_, i) => i); // reset rank tracking
+      setOvertakeIndexes([]);
     }
   };
-
-  const [overtakeIndexes, setOvertakeIndexes] = useState<number[]>([]);
-const prevRanksRef = useRef<number[]>([]);
-useEffect(() => {
-  if (prevRanksRef.current.length === 0) {
-    prevRanksRef.current = sortedPlayers.map(p => p.originalIndex);
-    return;
-  }
-
-  const prevRanks = prevRanksRef.current;
-  const newRanks = sortedPlayers.map(p => p.originalIndex);
-
-  const overtakes = newRanks.reduce<number[]>((acc, playerIndex, newPos) => {
-    const prevPos = prevRanks.indexOf(playerIndex);
-    if (prevPos > newPos) acc.push(playerIndex);
-    return acc;
-  }, []);
-
-  if (overtakes.length > 0) {
-    setOvertakeIndexes(overtakes);
-    setTimeout(() => setOvertakeIndexes([]), 2000);
-  }
-
-  prevRanksRef.current = newRanks;
-}, [players]);
-
 
   // Undo last change
   const undo = () => {
@@ -65,47 +44,64 @@ useEffect(() => {
     setUndoStack((stack) => stack.slice(0, stack.length - 1));
   };
 
-  // Reset scores to zero
-  const reset = () => {
-    setUndoStack((stack) => [...stack, players]);
-    setPlayers(players.map((p) => ({ ...p, score: 0 })));
-  };
+ // Reset scores to zero and reset round to 1
+const reset = () => {
+  setUndoStack((stack) => [...stack, players]);
+  setPlayers(players.map((p) => ({ ...p, score: 0 })));
+  setRound(1);  // Reset round here
+};
+
 
   // New Game - clear everything, back to add players
   const newGame = () => {
     setPlayers([]);
     setUndoStack([]);
     setShowAddPlayers(true);
+    setRound(1);
+    setOvertakeIndexes([]);
+    prevRanksRef.current = [];
   };
 
-  // Score round based on German Bridge rules
-  const scorePlayer = (index: number) => {
-    const bidStr = prompt(`${players[index].name} - Enter bid`);
-    const wonStr = prompt(`${players[index].name} - Enter sets won`);
-
-    if (!bidStr || !wonStr) return;
-
-    const bid = parseInt(bidStr, 10);
-    const won = parseInt(wonStr, 10);
-
-    if (isNaN(bid) || isNaN(won)) {
-      alert('Invalid numbers entered.');
+  // Add score: prompt for n, add 10 + n²
+  const addScore = (index: number) => {
+    const nStr = prompt(`Sets won for ${players[index].name}`);
+    if (nStr === null) return; // Cancelled
+    const n = parseInt(nStr, 10);
+    if (isNaN(n)) {
+      alert('Please enter a valid number.');
       return;
     }
 
-    const prevPlayers = JSON.parse(JSON.stringify(players)); // deep copy for undo
+    const scoreToAdd = 10 + Math.pow(n, 2);
 
-    let scoreChange = 0;
-    if (bid === won) {
-      scoreChange = 10 + Math.pow(won, 2);
-    } else {
-      scoreChange = -Math.pow(Math.abs(bid - won), 2);
-    }
-
+    const prevPlayers = JSON.parse(JSON.stringify(players));
     const newPlayers = [...players];
     newPlayers[index] = {
       ...newPlayers[index],
-      score: newPlayers[index].score + scoreChange,
+      score: newPlayers[index].score + scoreToAdd,
+    };
+
+    setUndoStack((stack) => [...stack, prevPlayers]);
+    setPlayers(newPlayers);
+  };
+
+  // Subtract score: prompt for x, subtract x²
+  const subtractScore = (index: number) => {
+    const xStr = prompt(`sets lost ${players[index].name}`);
+    if (xStr === null) return; // Cancelled
+    const x = parseInt(xStr, 10);
+    if (isNaN(x)) {
+      alert('Please enter a valid number.');
+      return;
+    }
+
+    const scoreToSubtract = Math.pow(x, 2);
+
+    const prevPlayers = JSON.parse(JSON.stringify(players));
+    const newPlayers = [...players];
+    newPlayers[index] = {
+      ...newPlayers[index],
+      score: newPlayers[index].score - scoreToSubtract,
     };
 
     setUndoStack((stack) => [...stack, prevPlayers]);
@@ -124,26 +120,65 @@ useEffect(() => {
     setPlayers(newPlayers);
   };
 
+  // Sort players descending by score (only when Next Round/Rank clicked)
+  const sortedPlayers = players
+    .map((p, i) => ({ ...p, originalIndex: p.originalIndex ?? i }));
+
+  // Detect overtakes when players change (optional, can keep this or remove)
+  useEffect(() => {
+    if (prevRanksRef.current.length === 0) {
+      prevRanksRef.current = sortedPlayers.map((p) => p.originalIndex);
+      return;
+    }
+
+    const prevRanks = prevRanksRef.current;
+    const newRanks = sortedPlayers
+      .slice()
+      .sort((a, b) => b.score - a.score)
+      .map((p) => p.originalIndex);
+
+    const overtakes = newRanks.reduce<number[]>((acc, playerIndex, newPos) => {
+      const prevPos = prevRanks.indexOf(playerIndex);
+      if (prevPos > newPos) acc.push(playerIndex);
+      return acc;
+    }, []);
+
+    if (overtakes.length > 0) {
+      setOvertakeIndexes(overtakes);
+      const timer = setTimeout(() => setOvertakeIndexes([]), 2000);
+      return () => clearTimeout(timer);
+    }
+
+    prevRanksRef.current = newRanks;
+  }, [players]);
+
+  // Next Round / Rank button logic: sort players descending by score and update prevRanksRef
+  const handleNextRound = () => {
+    setRound((prev) => prev + 1);
+    const newRanks = players
+      .slice()
+      .sort((a, b) => b.score - a.score)
+      .map((p) => p.originalIndex);
+    prevRanksRef.current = newRanks;
+    setPlayers((prev) =>
+      [...prev].sort((a, b) => b.score - a.score) // sort players state to reflect ranking
+    );
+  };
+
   // Highlight leader row
   const maxScore = players.length ? Math.max(...players.map((p) => p.score)) : 0;
-
-  // Sort players descending by score
-  const sortedPlayers = players
-    .map((p, i) => ({ ...p, originalIndex: i }))
-    .sort((a, b) => b.score - a.score);
 
   return (
     <main>
       <h1 className="text-3xl font-bold">Wee FamBam's Spectacular Addiction</h1>
-      <h2 className="text-xl mb-6"> German Bridge Scoreboard </h2>
-      <br />
+      <h2 className="text-xl mb-6">German Bridge Scoreboard</h2>
 
       {showAddPlayers && (
         <section className="mb-6">
           <h2 className="mb-2">Add players (comma separated):</h2>
           <input
             type="text"
-            className="border px-3 py-2 rounded"
+            className="border px-3 py-2 rounded w-full max-w-md"
             value={inputNames}
             onChange={(e) => setInputNames(e.target.value)}
             placeholder="Player1, Player2, Player3"
@@ -180,64 +215,85 @@ useEffect(() => {
               className="bg-gray-600 text-white px-4 py-2 rounded"
               onClick={reset}
             >
-              Reset Scores
+              Reset Game
             </button>
           </div>
-          <div className="table-wrapper">
+
+          <div className="table-wrapper max-w-full overflow-x-auto p-2">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-lg font-semibold">Round: {round}</div>
+              <button
+                onClick={handleNextRound}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Check Ranking
+              </button>
+            </div>
             <table className="w-full border-collapse border">
               <thead>
                 <tr>
                   <th className="border border-gray-400 px-3 py-1 w-20">Player</th>
                   <th className="border border-gray-400 px-3 py-1 w-10">Score</th>
-                  <th className="border border-gray-400 w-10">Calculate</th>
-                  <th className="border border-gray-400 px-3 py-1 w-40">Quick Add/Subtract</th>
-
+                  <th className="border border-gray-400 w-20">Adjust Score</th>
+                  <th className="border border-gray-400 px-3 py-1 w-40">
+                    Quick Add/Subtract
+                  </th>
                 </tr>
               </thead>
               <tbody>
-  {sortedPlayers.map((player, rank) => {
-    const isOvertaking = overtakeIndexes.includes(player.originalIndex);
-    const isLeader = player.score === maxScore && maxScore !== 0;
+                {sortedPlayers.map((player) => {
+                  const isOvertaking = overtakeIndexes.includes(player.originalIndex);
+                  const isLeader = player.score === maxScore && maxScore !== 0;
 
-    return (
-      <tr
-        key={player.originalIndex}
-        className={`${isLeader ? 'bg-yellow-200 font-bold' : ''} ${
-          isOvertaking ? 'overtake' : ''
-        }`}
-      >
-        <td className="border border-gray-400 px-1 py-1">{player.name}</td>
-        <td className="border border-gray-400 px-1 py-1">{player.score}</td>
-        <td className="border border-gray-400 px-1 py-1">
-          <button
-            className="bg-purple-600 text-white px-3 py-1 rounded"
-            onClick={() => scorePlayer(player.originalIndex)}
-          >
-            Calculate
-          </button>
-        </td>
-        <td className="border border-gray-400 px-3 py-1 space-x-1">
-          <div className="button-group">
-            <button
-              className="bg-green-600 text-white px-2 py-1 rounded"
-              onClick={() => quickAdjustScore(player.originalIndex, 10)}
-            >
-              +10
-            </button>
-            <button onClick={() => quickAdjustScore(player.originalIndex, 1)}>+1</button>
-            <button
-              className="bg-red-600 text-white px-2 py-1 rounded"
-              onClick={() => quickAdjustScore(player.originalIndex, -1)}
-            >
-              -1
-            </button>
-          </div>
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
-
+                  return (
+                    <tr
+                      key={player.originalIndex}
+                      className={`${isLeader ? 'bg-yellow-200 font-bold' : ''} ${
+                        isOvertaking ? 'overtake' : ''
+                      }`}
+                    >
+                      <td className="border border-gray-400 px-1 py-1">{player.name}</td>
+                      <td className="border border-gray-400 px-1 py-1">{player.score}</td>
+                      <td className="border border-gray-400 px-1 py-1 space-x-2">
+                        <button
+                          className="bg-green-600 text-white px-3 py-1 rounded"
+                          onClick={() => addScore(player.originalIndex)}
+                        >
+                          +
+                        </button>
+                        <button
+                          className="bg-red-600 text-white px-3 py-1 rounded"
+                          onClick={() => subtractScore(player.originalIndex)}
+                        >
+                          -
+                        </button>
+                      </td>
+                      <td className="border border-gray-400 px-3 py-1 space-x-1">
+                        <div className="button-group flex space-x-1">
+                          <button
+                            className="bg-green-600 text-white px-2 py-1 rounded"
+                            onClick={() => quickAdjustScore(player.originalIndex, 10)}
+                          >
+                            +10
+                          </button>
+                          <button
+                            className="bg-green-600 text-white px-2 py-1 rounded"
+                            onClick={() => quickAdjustScore(player.originalIndex, 1)}
+                          >
+                            +1
+                          </button>
+                          <button
+                            className="bg-red-600 text-white px-2 py-1 rounded"
+                            onClick={() => quickAdjustScore(player.originalIndex, -1)}
+                          >
+                            -1
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
         </>
