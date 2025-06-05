@@ -52,7 +52,7 @@ export default function GamePage() {
 
   // Score round based on German Bridge rules
   const scorePlayer = (index: number) => {
-    const bidStr = prompt(`${players[index].name} - Enter bid (number of sets)`);
+    const bidStr = prompt(`${players[index].name} - Enter bid`);
     const wonStr = prompt(`${players[index].name} - Enter sets won`);
 
     if (!bidStr || !wonStr) return;
@@ -106,8 +106,8 @@ export default function GamePage() {
 
   return (
     <main>
-      <h1 className="text-2xl font-bold">Wee FamBam's Spectacular Addiction</h1>
-      <h2  className="text-xl mb-6"> German Bridge Scoreboard </h2>
+      <h1 className="text-3xl font-bold">Wee FamBam's Spectacular Addiction</h1>
+      <h2 className="text-xl mb-6"> German Bridge Scoreboard </h2>
       <br />
 
       {showAddPlayers && (
@@ -155,62 +155,65 @@ export default function GamePage() {
               Reset Scores
             </button>
           </div>
+          <div className="table-wrapper">
+            <table className="w-full border-collapse border">
+              <thead>
+                <tr>
+                  <th className="border border-gray-400 px-3 py-1 w-5">Rank</th>
+                  <th className="border border-gray-400 px-3 py-1 w-40">Player</th>
+                  <th className="border border-gray-400 px-3 py-1 w-10">Score</th>
+                  <th className="border border-gray-400 px-3 py-1 w-40">Calculate</th>
+                  <th className="border border-gray-400 px-3 py-1 w-40">Quick Add/Subtract</th>
 
-          <table className="w-full border-collapse border">
-            <thead>
-              <tr>
-                <th className="border border-gray-400 px-3 py-1 w-5">Rank</th>
-                <th className="border border-gray-400 px-3 py-1 w-40">Player</th>
-                <th className="border border-gray-400 px-3 py-1 w-20">Score</th>
-                <th className="border border-gray-400 px-3 py-1 w-40">Calculate</th>
-                <th className="border border-gray-400 px-3 py-1 w-40">Quick Add/Subtract</th>
-
-              </tr>
-            </thead>
-            <tbody>
-              {sortedPlayers.map((player, rank) => (
-                <tr
-                  key={player.originalIndex}
-                  className={
-                    player.score === maxScore && maxScore !== 0
-                      ? 'bg-yellow-200 font-bold'
-                      : ''
-                  }
-                >
-                  <td className="border border-gray-400 px-1 py-1">{rank + 1}</td>
-                  <td className="border border-gray-400 px-1 py-1">{player.name}</td>
-                  <td className="border border-gray-400 px-1 py-1">{player.score}</td>
-                  <td className="border border-gray-400 px-1 py-1">
-                    <button
-                      className="bg-purple-600 text-white px-3 py-1 rounded"
-                      onClick={() => scorePlayer(player.originalIndex)}
-                    >
-                      Calculate Score
-                    </button>
-                  </td>
-                  <td className="border border-gray-400 px-3 py-1 space-x-1">
-                    <button
-                      className="bg-green-600 text-white px-2 py-1 rounded"
-                      onClick={() => quickAdjustScore(player.originalIndex, 10)}
-                    >
-                      +10
-                    </button>
-                    <button
-                      onClick={() => quickAdjustScore(player.originalIndex, 1)}
-                    >
-                      +1
-                    </button>
-                    <button
-                      className="bg-red-600 text-white px-2 py-1 rounded"
-                      onClick={() => quickAdjustScore(player.originalIndex, -1)}
-                    >
-                      -1
-                    </button>
-                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sortedPlayers.map((player, rank) => (
+                  <tr
+                    key={player.originalIndex}
+                    className={
+                      player.score === maxScore && maxScore !== 0
+                        ? 'bg-yellow-200 font-bold'
+                        : ''
+                    }
+                  >
+                    <td className="border border-gray-400 px-1 py-1">{rank + 1}</td>
+                    <td className="border border-gray-400 px-1 py-1">{player.name}</td>
+                    <td className="border border-gray-400 px-1 py-1">{player.score}</td>
+                    <td className="border border-gray-400 px-1 py-1">
+                      <button
+                        className="bg-purple-600 text-white px-3 py-1 rounded"
+                        onClick={() => scorePlayer(player.originalIndex)}
+                      >
+                        Calculate Score
+                      </button>
+                    </td>
+                    <td className="border border-gray-400 px-3 py-1 space-x-1">
+                      <div className="button-group">
+                        <button
+                          className="bg-green-600 text-white px-2 py-1 rounded"
+                          onClick={() => quickAdjustScore(player.originalIndex, 10)}
+                        >
+                          +10
+                        </button>
+                        <button
+                          onClick={() => quickAdjustScore(player.originalIndex, 1)}
+                        >
+                          +1
+                        </button>
+                        <button
+                          className="bg-red-600 text-white px-2 py-1 rounded"
+                          onClick={() => quickAdjustScore(player.originalIndex, -1)}
+                        >
+                          -1
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </main>

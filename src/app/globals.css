@@ -19,35 +19,78 @@
   }
 }
 
-main{
-  padding: 80px;
+main {
   background-color: #e5e5f7;
   background-image: radial-gradient(#ffffff 1px, hsl(177, 100%, 96%) 1px);
-  background-size: 20px 20px;
+  padding: 5vw 3vw; /* reduced horizontal padding for small screens */
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
-tbody{
-  padding: auto;
+/* Make the table container horizontally scrollable on small screens */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+}
+
+/* Remove invalid padding from tbody */
+tbody {
   text-align: left;
 }
 
-button{
+/* Style buttons for bigger tap targets and wrap nicely */
+button {
   border-radius: 8px;
   background-color: #0a5059;
-  padding: 8px;
+  padding: 10px 14px;
   color: aliceblue;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  white-space: nowrap;
 }
 
-thead{
-  padding: 100px;
-  text-align: left;
+button:hover,
+button:focus {
+  background-color: #084146;
+  outline: none;
+}
+
+/* Buttons container flex wrap */
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Thead styles */
+thead {
   background-color: #0a5059;
-  color: rgb(255, 255, 255);
+  color: #fff;
+  text-align: left;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif
+/* Responsive table header and cells padding */
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+}
 
+/* Make font sizes a bit bigger on small screens */
+@media (max-width: 640px) {
+  main {
+    padding: 4vw 2vw;
+  }
+
+  button {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+
+  /* Make table font a little smaller on narrow screens */
+  table {
+    font-size: 0.875rem;
+  }
 }
