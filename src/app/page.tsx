@@ -65,6 +65,7 @@ export default function Home() {
       <table className="min-w-full border border-gray-300 bg-white shadow rounded-lg overflow-hidden">
         <thead className="thead">
           <tr>
+            <th className="p-3 text-left">#</th>
             <th className="p-3 text-left">Player</th>
             <th className="p-3 text-left">Score</th>
             <th className="p-3 text-left">+10</th>
@@ -82,6 +83,7 @@ export default function Home() {
                 className={`border-t border-gray-300 ${player.score === maxScore && maxScore > 0 ? 'bg-yellow-100' : ''
                   }`}
               >
+                <td className="p-3">{index + 1}</td>
                 <td className="p-3">{player.name}</td>
                 <td className="p-3">{player.score}</td>
                 <td className="p-3">
