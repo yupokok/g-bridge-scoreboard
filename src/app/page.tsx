@@ -31,12 +31,12 @@ export default function Home() {
   const addPlayer = () => {
     const input = prompt('Enter player names, separated by commas:')
     if (!input) return
-  
+
     const names = input
       .split(',')
       .map(name => name.trim())
       .filter(name => name.length > 0)
-  
+
     const newPlayers = names.map(name => ({ name, score: 0 }))
     setPlayers([...players, ...newPlayers])
   }
@@ -73,41 +73,43 @@ export default function Home() {
           </tr>
         </thead>
         <tbody>
-          {players.map((player, index) => (
-            <tr
-            key={index}
-            className={`border-t border-gray-300 ${
-              player.score === maxScore && maxScore > 0 ? 'bg-yellow-100' : ''
-            }`}
-          >
-              <td className="p-3">{player.name}</td>
-              <td className="p-3">{player.score}</td>
-              <td className="p-3">
-                <button
-                  className="bg-green-500 text-white px-3 py-1 rounded"
-                  onClick={() => handleScoreChange(index, 10)}
-                >
-                  +10
-                </button>
-              </td>
-              <td className="p-3">
-                <button
-                  className="button"
-                  onClick={() => handleScoreChange(index, -1)}
-                >
-                  -1
-                </button>
-              </td>
-              <td className="p-3">
-                <button
-                  className="button"
-                  onClick={() => handleScoreChange(index, 1)}
-                >
-                  +1
-                </button>
-              </td>
-            </tr>
-          ))}
+          {[...players]
+            .sort((a, b) => b.score - a.score)
+            .map((player, index) => (
+
+              <tr
+                key={index}
+                className={`border-t border-gray-300 ${player.score === maxScore && maxScore > 0 ? 'bg-yellow-100' : ''
+                  }`}
+              >
+                <td className="p-3">{player.name}</td>
+                <td className="p-3">{player.score}</td>
+                <td className="p-3">
+                  <button
+                    className="bg-green-500 text-white px-3 py-1 rounded"
+                    onClick={() => handleScoreChange(index, 10)}
+                  >
+                    +10
+                  </button>
+                </td>
+                <td className="p-3">
+                  <button
+                    className="button"
+                    onClick={() => handleScoreChange(index, -1)}
+                  >
+                    -1
+                  </button>
+                </td>
+                <td className="p-3">
+                  <button
+                    className="button"
+                    onClick={() => handleScoreChange(index, 1)}
+                  >
+                    +1
+                  </button>
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
 
